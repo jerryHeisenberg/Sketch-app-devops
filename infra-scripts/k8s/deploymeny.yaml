@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sketch-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sketch-app
+  template:
+    metadata:
+      labels:
+        app: sketch-app
+    spec:
+      containers:
+      - name: sketch-app
+        image: jerryheisenberg/sketch-app:latest
+        ports:
+        - containerPort: 5000
