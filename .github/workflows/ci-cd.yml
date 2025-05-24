@@ -1,29 +1,53 @@
-name: CI - Build & Push Docker Image
+name: CI/CD Pipeline
+
 on:
-    push:
-        branches: [ main ]
+  push:
+    branches: [ main ]
 
 env:
-    IMAGE_NAME: jerryheisenberg/sketch-app
-jobs:
-    build-and-push:
-        runs-on: ubuntu-latest
+  IMAGE_NAME: jerryheisenberg/sketch-app
 
-        steps:
-        - name: Checkout Code
-          uses: actions/checkout@v3
-        
-        - name: Log-in to Docker
-          uses: docker/login-action@v2
-          with:
-                username: ${{secrets.DOCKER_USERNAME}}
-                password: ${{secrets.DOCKER_PASSWORD}}
-        
-        - name: Build and push Docker image
-          uses: docker/build-push-action@v4
-          with:
-                context: .
-                push: true
-                tags: ${{ env.IMAGE_NAME}}:latest
-    
-    
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Log-in to Docker
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: true
+          tags: ${{ env.IMAGE_NAME }}:latest
+
+  deploy-to-minikube:
+    needs: build-and-push
+    runs-on: [self-hosted, nika]
+    steps:
+      - name: Pull latest image on Minikube Docker
+        run: |
+          eval $(minikube docker-env)
+          docker pull ${{ env.IMAGE_NAME }}:latest
+
+      - name: Set new image in deployment
+        run: |
+          kubectl set image deployment/sketch-app sketch-app=${{ env.IMAGE_NAME }}:latest
+
+      - name: Wait for deployment rollout
+        run: |
+          kubectl rollout status deployment/sketch-app --timeout=120s
+
+      - name: Show service URL
+        run: |
+          minikube service sketch-app-service --url
+
+      - name: Show running pods
+        run: |
+          kubectl get pods
