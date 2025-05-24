@@ -27,4 +27,27 @@ jobs:
                 push: true
                 tags: ${{ env.IMAGE_NAME}}:latest
     
-    
+    deploy-to-minikube:
+
+        needs: build-and-push
+        runs-on: [self-hosted, nika]  # Your local runner (with minikube + kubectl installed)
+
+        steps:
+        - name: Pull latest image on minikube's Docker daemon
+          run: |
+           eval $(minikube docker-env)
+           docker pull ${{ env.IMAGE_NAME }}:latest
+
+        - name: Deploy to Minikube cluster
+          run: |
+           kubectl apply -f deployment.yaml
+           kubectl apply -f service.yaml
+
+        - name: Wait for deployment to be ready
+          run: kubectl rollout status deployment/sketch-app  --timeout=120s
+
+        - name: Show service URL
+          run: minikube service sketch-app-service --url
+
+        - name: Show running pods
+          run: kubectl get pods

@@ -1,0 +1,40 @@
+name: CD - Deploy to Minikube
+
+on:
+  workflow_run:
+    workflows: ["CI - Build & Push Docker Image"]
+    types:
+      - completed
+
+env:
+  IMAGE_NAME: jerryheisenberg/sketch-app
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, nika]
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Pull Latest Image (optional if Minikube pulls from Docker Hub)
+        run: |
+          eval $(minikube docker-env)
+          docker pull ${{ env.IMAGE_NAME }}:latest
+
+      - name: Set New Image in Deployment (safer update)
+        run: |
+          kubectl set image deployment/sketch-app sketch-app=${{ env.IMAGE_NAME }}:latest
+
+      - name: Wait for Deployment Rollout
+        run: kubectl rollout status deployment/sketch-app --timeout=120s
+
+      - name: Get Service URL
+        id: service_url
+        run: |
+          SERVICE_URL=$(minikube service sketch-app-service --url)
+          echo "Service running at: $SERVICE_URL"
+          echo "SERVICE_URL=$SERVICE_URL" >> $GITHUB_ENV
+
+      - name: Show Running Pods
+        run: kubectl get pods
