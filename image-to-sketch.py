@@ -114,7 +114,7 @@ button:hover, input[type="file"]:hover, .reset-button:hover, .snap-button:hover 
 
     button, input[type="file"], .reset-button, .snap-button {
         padding: 8px 16px;
-        font-size: 14px;
+        font-size: 16px;
     }
 }
 
